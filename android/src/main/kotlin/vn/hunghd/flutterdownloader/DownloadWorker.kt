@@ -238,14 +238,24 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
     private fun setupPartialDownloadedDataHeader(
         conn: HttpURLConnection,
         filename: String?,
-        savedDir: String
+        savedDir: String,
+        headerRange: String,
     ): Long {
+        //var headerRange = "{\"range\":\"bytes=1234-209715562\"}"
+        var partialStart : Long
+        var PartialEnd : Long
+        partialStart = headerRange.substring(headerRange.indexOf("=")+1,headerRange.indexOf("-")).toLong()
+        PartialEnd = headerRange.substring(headerRange.indexOf("-")+1,headerRange.indexOf("-")+headerRange.substring(headerRange.indexOf("-")).indexOf("\"")).toLong()
+
+        log("$partialStart")
+        log("$PartialEnd")
+
         val saveFilePath = savedDir + File.separator + filename
         val partialFile = File(saveFilePath)
         val downloadedBytes: Long = partialFile.length()
-        log("Resume download: Range: bytes=$downloadedBytes-")
+        log("Resume download: Range, bytes=${downloadedBytes + partialStart}-${PartialEnd}")
         conn.setRequestProperty("Accept-Encoding", "identity")
-        conn.setRequestProperty("Range", "bytes=$downloadedBytes-")
+        conn.setRequestProperty("Range", "bytes=${downloadedBytes + partialStart}-${PartialEnd}")
         conn.doInput = true
         return downloadedBytes
     }
@@ -312,7 +322,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                 setupHeaders(httpConn, headers)
                 // try to continue downloading a file from its partial downloaded data.
                 if (isResume) {
-                    downloadedBytes = setupPartialDownloadedDataHeader(httpConn, actualFilename, savedDir)
+                    downloadedBytes = setupPartialDownloadedDataHeader(httpConn, actualFilename, savedDir, headers)
                 }
                 responseCode = httpConn.responseCode
                 when (responseCode) {
@@ -335,7 +345,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
             }
             httpConn!!.connect()
             val contentType: String
-            if ((responseCode == HttpURLConnection.HTTP_OK || isResume && responseCode == HttpURLConnection.HTTP_PARTIAL) && !isStopped) {
+            if ((responseCode == HttpURLConnection.HTTP_OK || isResume || responseCode == HttpURLConnection.HTTP_PARTIAL) && !isStopped) {
                 contentType = httpConn.contentType
                 val contentLength: Long =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) httpConn.contentLengthLong else httpConn.contentLength.toLong()
@@ -464,7 +474,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                     if (isStopped) if (loadedTask!!.resumable) DownloadStatus.PAUSED else DownloadStatus.CANCELED else DownloadStatus.FAILED
                 taskDao!!.updateTask(id.toString(), status, lastProgress)
                 updateNotification(context, actualFilename ?: fileURL, status, -1, null, true)
-                log(if (isStopped) "Download canceled" else "Server replied HTTP code: $responseCode")
+                log(if (isStopped) "Download canceled" else "Players Server replied HTTP code: $responseCode")
             }
         } catch (e: IOException) {
             taskDao!!.updateTask(id.toString(), DownloadStatus.FAILED, lastProgress)
