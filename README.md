@@ -19,6 +19,12 @@ manage download file location. It is still in triage and discussion in this
 very appreciated to have contribution and feedback from Flutter developer to get
 better design for the plugin._
 
+# Past Versions and SQL Injection Vulnerabilities
+
+In previous versions of this package, there were known vulnerabilities related to SQL injection. SQL injection is a type of security vulnerability that can allow malicious users to manipulate SQL queries executed by an application, potentially leading to unauthorized access or manipulation of the database.
+
+It is strongly recommended to upgrade to the latest version of this package to ensure that your application is not exposed to SQL injection vulnerabilities. The latest version contains the necessary security improvements and patches to mitigate such risks.
+
 ## iOS integration
 
 ### Required configuration:
@@ -287,6 +293,9 @@ void main() {
 
 ### Create new download task
 
+The directory must be created in advance.
+After that, you need to provide the path of the directory in the `savedDir` parameter.
+
 ```dart
 final taskId = await FlutterDownloader.enqueue(
   url: 'your download link',
@@ -320,7 +329,7 @@ void initState() {
   IsolateNameServer.registerPortWithName(_port.sendPort, 'downloader_send_port');
   _port.listen((dynamic data) {
     String id = data[0];
-    DownloadTaskStatus status = data[1];
+    DownloadTaskStatus status = DownloadTaskStatus.fromInt(data[1]);
     int progress = data[2];
     setState((){ });
   });
@@ -335,9 +344,9 @@ void dispose() {
 }
 
 @pragma('vm:entry-point')
-static void downloadCallback(String id, DownloadTaskStatus status, int progress) {
-  final SendPort send = IsolateNameServer.lookupPortByName('downloader_send_port');
-  send.send([id, status, progress]);
+static void downloadCallback(String id, int status, int progress) {
+  final SendPort? send = IsolateNameServer.lookupPortByName('downloader_send_port');
+  send?.send([id, status, progress]);
 }
 
 ```
@@ -348,13 +357,13 @@ avoid tree shaking in release mode for Android.
 ### Load all download tasks
 
 ```dart
-final tasks = await FlutterDownloader.loadTasks();
+final List<DownloadTask>? tasks = await FlutterDownloader.loadTasks();
 ```
 
 ### Load download tasks using a raw SQL query
 
 ```dart
-final tasks = await FlutterDownloader.loadTasksWithRawQuery(query: query);
+final List<DownloadTask>? tasks = await FlutterDownloader.loadTasksWithRawQuery(query: query);
 ```
 
 In order to parse data into `DownloadTask` object successfully, you should load

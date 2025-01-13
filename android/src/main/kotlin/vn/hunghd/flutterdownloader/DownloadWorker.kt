@@ -267,7 +267,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
         filename: String?,
         headers: String,
         isResume: Boolean,
-        timeout: Int,
+        timeout: Int
     ) {
         var actualFilename = filename
         var url = fileURL
@@ -310,7 +310,11 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                         resourceUrl.openConnection() as HttpURLConnection
                     }
                 } else {
-                    resourceUrl.openConnection() as HttpsURLConnection
+                    if (resourceUrl.protocol.lowercase(Locale.US) == "https") {
+                        resourceUrl.openConnection() as HttpsURLConnection
+                    } else {
+                        resourceUrl.openConnection() as HttpURLConnection
+                    }
                 }
                 log("Open connection to $url")
                 httpConn.connectTimeout = timeout
@@ -349,7 +353,9 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
                 contentType = httpConn.contentType
                 val contentLength: Long =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) httpConn.contentLengthLong else httpConn.contentLength.toLong()
-                log("Content-Type = $contentType")
+                if (contentType != null) {
+                    log("Content-Type = $contentType")
+                }
                 log("Content-Length = $contentLength")
                 val charset = getCharsetFromContentType(contentType)
                 log("Charset = $charset")
@@ -523,7 +529,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
      * Create a file inside the Download folder using MediaStore API
      */
     @RequiresApi(Build.VERSION_CODES.Q)
-    private fun createFileInPublicDownloadsDir(filename: String?, mimeType: String): Uri? {
+    private fun createFileInPublicDownloadsDir(filename: String?, mimeType: String?): Uri? {
         val collection: Uri = MediaStore.Downloads.EXTERNAL_CONTENT_URI
         val values = ContentValues()
         values.put(MediaStore.Downloads.DISPLAY_NAME, filename)
@@ -776,7 +782,7 @@ class DownloadWorker(context: Context, params: WorkerParameters) :
         return contentType?.split(";")?.toTypedArray()?.get(0)?.trim { it <= ' ' }
     }
 
-    private fun isImageOrVideoFile(contentType: String): Boolean {
+    private fun isImageOrVideoFile(contentType: String?): Boolean {
         val newContentType = getContentTypeWithoutCharset(contentType)
         return newContentType != null && (newContentType.startsWith("image/") || newContentType.startsWith("video"))
     }

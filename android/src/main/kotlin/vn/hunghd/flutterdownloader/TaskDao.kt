@@ -21,7 +21,7 @@ class TaskDao(private val dbHelper: TaskDbHelper) {
         TaskEntry.COLUMN_NAME_SHOW_NOTIFICATION,
         TaskEntry.COLUMN_NAME_TIME_CREATED,
         TaskEntry.COLUMN_SAVE_IN_PUBLIC_STORAGE,
-        TaskEntry.COLUMN_ALLOW_CELLULAR,
+        TaskEntry.COLUMN_ALLOW_CELLULAR
     )
 
     fun insertOrUpdateNewTask(
@@ -93,7 +93,7 @@ class TaskDao(private val dbHelper: TaskDbHelper) {
 
     fun loadTasksWithRawQuery(query: String?): List<DownloadTask> {
         val db = dbHelper.readableDatabase
-        val cursor = db.rawQuery(query, null)
+        val cursor = db.rawQuery(query!!, null)
         val result: MutableList<DownloadTask> = ArrayList()
         while (cursor.moveToNext()) {
             result.add(parseCursor(cursor))
@@ -199,7 +199,7 @@ class TaskDao(private val dbHelper: TaskDbHelper) {
         val db = dbHelper.writableDatabase
         val values = ContentValues()
         values.put(TaskEntry.COLUMN_NAME_FILE_NAME, filename)
-        values.put(TaskEntry.COLUMN_NAME_MIME_TYPE, mimeType)
+        values.put(TaskEntry.COLUMN_NAME_MIME_TYPE, mimeType ?: "unknown")
         db.beginTransaction()
         try {
             db.update(
